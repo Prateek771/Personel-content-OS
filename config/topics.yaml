@@ -1,0 +1,86 @@
+# ==============================================================================
+# AI Content Intelligence OS — Research Topics & Taxonomy
+# ==============================================================================
+
+version: 1.0
+
+topics:
+  - id: ai_agents
+    name: AI Agents & Workflows
+    weight: 1.0
+    keywords:
+      - agent workflow
+      - autonomous agent
+      - multi-agent
+      - agent coordination
+      - agent loop
+    preferred_angles:
+      - workflow
+      - lesson
+      - failure_analysis
+
+  - id: coding_agents
+    name: Coding Agents & Tooling
+    weight: 1.0
+    keywords:
+      - coding agent
+      - claude code
+      - codegen
+      - automated refactor
+      - terminal agent
+      - test driven agent
+    preferred_angles:
+      - repo_watch
+      - unusual_tool_use
+      - workflow
+
+  - id: mcp_and_interoperability
+    name: Model Context Protocol (MCP) & Tools
+    weight: 0.95
+    keywords:
+      - mcp server
+      - tool use
+      - function calling
+      - context protocol
+      - local agent tools
+    preferred_angles:
+      - unusual_tool_use
+      - repo_watch
+
+  - id: computer_browser_use
+    name: Computer Use & Browser Automation
+    weight: 0.90
+    keywords:
+      - browser-use
+      - computer-use
+      - playwright agent
+      - ui automation
+      - desktop agent
+    preferred_angles:
+      - experiment
+      - lesson
+
+  - id: agent_memory_context
+    name: Agent Memory, Context & Retrieval
+    weight: 0.85
+    keywords:
+      - agent memory
+      - context compression
+      - long context
+      - working memory
+      - agent state
+    preferred_angles:
+      - workflow
+      - failure_analysis
+
+  - id: open_source_repos
+    name: High-Signal Open-Source AI Repositories
+    weight: 0.90
+    keywords:
+      - open source ai
+      - new repository
+      - github release
+      - local model tooling
+    preferred_angles:
+      - repo_watch
+      - experiment

@@ -1,0 +1,47 @@
+[project]
+name = "intelligence-os"
+version = "0.1.0"
+description = "AI Content Intelligence OS — Local-first Autonomous Content Pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.15.0",
+    "browserforge>=1.2.4",
+    "curl-cffi>=0.16.1",
+    "fastapi>=0.110.0",
+    "httpx>=0.28.1",
+    "markdownify>=1.2.3",
+    "patchright>=1.62.1",
+    "pillow>=10.0.0",
+    "playwright>=1.62.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.15.0",
+    "python-dotenv>=1.2.3",
+    "pyyaml>=6.0.3",
+    "requests-oauthlib>=2.0.0",
+    "rich>=15.0.0",
+    "scrapling>=0.4.15",
+    "typer>=0.27.1",
+    "uvicorn>=0.28.0",
+]
+
+[project.scripts]
+intelligence-os = "intelligence_os.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.2,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = [
+    "external",
+    ".venv",
+    "node_modules",
+    ".git",
+]

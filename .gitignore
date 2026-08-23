@@ -1,0 +1,36 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment secrets and credentials (CRITICAL: Never commit .env)
+.env
+.env.*
+*.env
+!.env.example
+
+# Databases & local persistent state
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.sqlite*
+
+# Local Logs & Outputs
+logs/
+*.log
+output/
+
+# External cloned repositories
+external/
+node_modules/
+.pytest_cache/
+.coverage
+htmlcov/

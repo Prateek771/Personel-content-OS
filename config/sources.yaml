@@ -1,0 +1,133 @@
+# ==============================================================================
+# AI Content Intelligence OS — Declarative Research Sources Configuration
+# ==============================================================================
+
+version: 1.0
+
+# ------------------------------------------------------------------------------
+# 1. Builders & Researchers Watchlist (Seed Tier 1 / Tier 2)
+# ------------------------------------------------------------------------------
+people:
+  - id: person-karpathy
+    name: Andrej Karpathy
+    role: AI Researcher / Educator
+    source_tier: 1
+    handles:
+      x: "karpathy"
+      github: "karpathy"
+    enabled: true
+    priority: high
+
+  - id: person-simonw
+    name: Simon Willison
+    role: Creator of Datasette / AI Tooling Engineer
+    source_tier: 1
+    handles:
+      x: "simonw"
+      github: "simonw"
+      blog: "https://simonwillison.net/atom/everything/"
+    enabled: true
+    priority: high
+
+  - id: person-borischerny
+    name: Boris Cherny
+    role: Creator / TypeScript & Agent Builder
+    source_tier: 1
+    handles:
+      x: "bcherny"
+      github: "bcherny"
+    enabled: true
+    priority: medium
+
+  - id: person-ethanmollick
+    name: Ethan Mollick
+    role: AI Empirical Researcher & Professor
+    source_tier: 2
+    handles:
+      x: "emollick"
+      substack: "https://www.oneusefulthing.org/feed"
+    enabled: true
+    priority: high
+
+  - id: person-harrisonchase
+    name: Harrison Chase
+    role: LangChain / Agent Orchestration Lead
+    source_tier: 1
+    handles:
+      x: "hwchase17"
+      github: "hwchase17"
+    enabled: true
+    priority: medium
+
+  - id: person-petersteinberger
+    name: Peter Steinberger
+    role: Tooling & Local AI Builder
+    source_tier: 1
+    handles:
+      x: "steipete"
+      github: "steipete"
+    enabled: true
+    priority: medium
+
+# ------------------------------------------------------------------------------
+# 2. Automated Web / Firecrawl / GitHub Research Sources
+# ------------------------------------------------------------------------------
+sources:
+  # GitHub Repositories & Search Queries (Tier 1)
+  - id: gh-agentic-repos
+    name: GitHub Trending Agentic Repos
+    source_type: github
+    source_tier: 1
+    target: "topic:ai-agent OR topic:mcp OR topic:browser-use OR topic:coding-agent"
+    polling_frequency_minutes: 360
+    enabled: true
+    priority: high
+    extraction_hints:
+      - "Look for release notes, commit logs, and README architecture diagrams."
+      - "Focus on new tooling and practical reproduction."
+
+  - id: gh-anthropic-mcp
+    name: Model Context Protocol Repositories
+    source_type: github
+    source_tier: 1
+    target: "org:modelcontextprotocol"
+    polling_frequency_minutes: 180
+    enabled: true
+    priority: high
+    extraction_hints:
+      - "Check for newly registered servers and protocol updates."
+
+  # Web Research & Changelogs via Firecrawl (Tier 1 & Tier 2)
+  - id: web-simonw-blog
+    name: Simon Willison's Weblog
+    source_type: firecrawl
+    source_tier: 1
+    target: "https://simonwillison.net/"
+    polling_frequency_minutes: 360
+    enabled: true
+    priority: high
+    extraction_hints:
+      - "Extract direct code experiments, tool releases, and LLM behavior analysis."
+
+  - id: web-hacker-news-ai
+    name: Hacker News High-Signal AI Discussions
+    source_type: firecrawl
+    source_tier: 2
+    target: "https://news.ycombinator.com/from?site=github.com"
+    polling_frequency_minutes: 180
+    enabled: true
+    priority: medium
+    extraction_hints:
+      - "Isolate comments with technical criticisms, benchmark reproductions, and limitations."
+
+  # Social / Community via Agent Reach
+  - id: social-agent-builders
+    name: Agent Builders & Practitioners Stream
+    source_type: agent_reach
+    source_tier: 2
+    target: "query:('AI agent' OR 'coding agent' OR 'browser use' OR 'MCP') (demo OR experiment OR release)"
+    polling_frequency_minutes: 180
+    enabled: true
+    priority: high
+    extraction_hints:
+      - "Filter out purely speculative hype; prioritize posts with video demos, github links, or metrics."
