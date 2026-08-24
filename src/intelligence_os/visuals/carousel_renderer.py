@@ -18,8 +18,13 @@ class CarouselRenderer:
         self.width = 1080
         self.height = 1080
 
-    def render_carousel(self, carousel_data: LinkedInCarouselData, topic_slug: str, bg_image_path: str | None = None) -> list[str]:
-        """Render each slide in carousel data to PNG and return absolute file paths."""
+    def render_carousel(self, carousel_data: LinkedInCarouselData, topic_slug: str, bg_image_path: str | None = None, on_slide_rendered=None) -> list[str]:
+        """Render each slide in carousel data to PNG and return absolute file paths.
+
+        The generated background image is applied to EVERY slide so the copy text
+        overlays the contextual visual (per product spec). ``on_slide_rendered`` is
+        invoked after each slide so the UI can show step-by-step progress.
+        """
         topic_dir = self.output_base_dir / topic_slug
         topic_dir.mkdir(parents=True, exist_ok=True)
 
@@ -42,9 +47,14 @@ class CarouselRenderer:
                 total_slides=total_slides,
                 topic_title=carousel_data.topic_title,
                 output_path=slide_path,
-                bg_image=bg_image if i == 1 else None, # Only apply to cover slide to keep it clean
+                bg_image=bg_image,  # overlay generated context image on every slide
             )
             generated_paths.append(str(slide_path.resolve()))
+            if on_slide_rendered:
+                try:
+                    on_slide_rendered(i, str(slide_path.resolve()))
+                except Exception:
+                    pass
 
         logger.info(f"Rendered {len(generated_paths)} carousel slides for '{topic_slug}' in {topic_dir}")
         return generated_paths

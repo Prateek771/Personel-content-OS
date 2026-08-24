@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 from intelligence_os.config.sources_manager import SourceManager
 from intelligence_os.config.settings import Settings
 from intelligence_os.research.adapters.base import RawHarvestItem
-from intelligence_os.research.adapters.firecrawl import FirecrawlAdapter
+from intelligence_os.research.adapters.scrapling import ScraplingAdapter
 from intelligence_os.research.adapters.github import GitHubAdapter
 from intelligence_os.research.harvest_engine import HarvestEngine
 from intelligence_os.storage.db import Database
@@ -28,15 +28,15 @@ def test_harvest_engine_execution(populated_harvest_env) -> None:
     db, source_mgr = populated_harvest_env
     repo = DiscoveryRepository(db)
 
-    mock_firecrawl = MagicMock(spec=FirecrawlAdapter)
-    mock_firecrawl.harvest.return_value = [
+    mock_scrapling = MagicMock(spec=ScraplingAdapter)
+    mock_scrapling.harvest.return_value = [
         RawHarvestItem(
             source_url="https://simonwillison.net/test-post",
             title="Simon Willison on Local Models",
             raw_content="Post about running LLMs locally.",
             markdown_content="Post about running LLMs locally.",
             author="Simon Willison",
-            source_type="firecrawl",
+            source_type="scrapling",
             source_tier=1,
         )
     ]
@@ -57,7 +57,7 @@ def test_harvest_engine_execution(populated_harvest_env) -> None:
     engine = HarvestEngine(
         source_manager=source_mgr,
         db=db,
-        firecrawl_adapter=mock_firecrawl,
+        scrapling_adapter=mock_scrapling,
         github_adapter=mock_github,
     )
 

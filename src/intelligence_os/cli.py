@@ -1,7 +1,6 @@
 """Command Line Interface for AI Content Intelligence OS."""
 
 import json
-import subprocess
 import typer
 import uvicorn
 from rich.console import Console
@@ -93,42 +92,14 @@ def check_config() -> None:
         console.print(f"Database path: [cyan]{settings.database_path}[/]")
         console.print(f"Log Level: [cyan]{settings.log_level}[/]")
         console.print(f"OpenRouter Configured: [cyan]{bool(settings.openrouter_api_key)}[/]")
+        console.print(f"GitHub Token Configured: [cyan]{bool(settings.github_token)}[/]")
         console.print(f"X (Twitter) Configured: [cyan]{bool(settings.x_access_token)}[/]")
-        console.print(f"LinkedIn Configured: [cyan]{bool(settings.linkedin_client_id)}[/]")
+        console.print(f"LinkedIn Configured: [cyan]{bool(settings.linkedin_access_token)}[/]")
         console.print(f"Copywriting Model: [cyan]{settings.openrouter_copywriting_model}[/]")
         console.print(f"Image Model: [cyan]{settings.openrouter_image_model}[/]")
     except ConfigurationError as e:
         console.print(f"[bold red]Configuration Error:[/] {e}")
         raise typer.Exit(code=1)
-
-
-@app.command("firecrawl-start")
-def firecrawl_start() -> None:
-    """Start local Firecrawl container stack (Redis, RabbitMQ, Playwright, API) via Docker Compose."""
-    console.print("[bold cyan]Starting self-hosted Firecrawl Docker Compose stack...[/]")
-    try:
-        subprocess.run(
-            ["docker", "compose", "-f", "external/firecrawl/docker-compose.yaml", "up", "-d"],
-            check=True,
-        )
-        console.print("[bold green]Firecrawl stack started successfully on http://localhost:3002![/]")
-    except Exception as e:
-        console.print(f"[bold yellow]Docker compose note:[/] {e}")
-        console.print("[dim]Even without Docker, the built-in local scraper fallback runs automatically.[/]")
-
-
-@app.command("firecrawl-stop")
-def firecrawl_stop() -> None:
-    """Stop local Firecrawl container stack."""
-    console.print("[bold cyan]Stopping Firecrawl Docker stack...[/]")
-    try:
-        subprocess.run(
-            ["docker", "compose", "-f", "external/firecrawl/docker-compose.yaml", "down"],
-            check=True,
-        )
-        console.print("[bold green]Firecrawl stack stopped.[/]")
-    except Exception as e:
-        console.print(f"[bold red]Error stopping Firecrawl:[/] {e}")
 
 
 @app.command("generate-x")

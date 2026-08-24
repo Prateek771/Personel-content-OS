@@ -5,9 +5,11 @@ from typing import Any
 from intelligence_os.config.sources_manager import SourceManager, SourceConfigEntry, PersonWatchlistEntry
 from intelligence_os.core.logger import logger
 from intelligence_os.research.adapters.base import BaseResearchAdapter, RawHarvestItem
-from intelligence_os.research.adapters.firecrawl import FirecrawlAdapter
+from intelligence_os.research.adapters.scrapling import ScraplingAdapter
+from intelligence_os.research.adapters.rss import RSSAdapter
 from intelligence_os.research.adapters.agent_reach import AgentReachAdapter
 from intelligence_os.research.adapters.github import GitHubAdapter
+from intelligence_os.research.adapters.x import XAdapter
 from intelligence_os.storage.db import Database
 from intelligence_os.storage.models import DiscoveryRecord
 from intelligence_os.storage.repositories import DiscoveryRepository
@@ -25,25 +27,39 @@ class HarvestEngine:
         self,
         source_manager: SourceManager,
         db: Database,
-        firecrawl_adapter: FirecrawlAdapter | None = None,
+        scrapling_adapter: ScraplingAdapter | None = None,
+        rss_adapter: RSSAdapter | None = None,
         agent_reach_adapter: AgentReachAdapter | None = None,
         github_adapter: GitHubAdapter | None = None,
+        x_adapter: XAdapter | None = None,
     ) -> None:
         self.source_manager = source_manager
         self.db = db
         self.discovery_repo = DiscoveryRepository(db)
         self.adapters: dict[str, BaseResearchAdapter] = {}
 
-        if firecrawl_adapter:
-            self.adapters["firecrawl"] = firecrawl_adapter
-            self.adapters["web"] = firecrawl_adapter
+        # Local Scrapling engine serves every web-scraping source type.
+        # Legacy "firecrawl" / "web" source types are routed here too since the
+        # Docker stack is intentionally skipped in favor of zero-Docker scraping.
+        if scrapling_adapter:
+            self.adapters["scrapling"] = scrapling_adapter
+            self.adapters["web"] = scrapling_adapter
+            self.adapters["firecrawl"] = scrapling_adapter
+        if rss_adapter:
+            self.adapters["rss"] = rss_adapter
         if agent_reach_adapter:
             self.adapters["agent_reach"] = agent_reach_adapter
         if github_adapter:
             self.adapters["github"] = github_adapter
+        if x_adapter:
+            self.adapters["x"] = x_adapter
 
-    def run_harvest_cycle(self) -> dict[str, Any]:
-        """Execute a complete harvest cycle across all enabled sources and people watchlist."""
+    def run_harvest_cycle(self, on_progress=None) -> dict[str, Any]:
+        """Execute a complete harvest cycle across all enabled sources and people watchlist.
+
+        on_progress, if provided, is called as on_progress(stage_key, label, detail) at each
+        meaningful step so callers (e.g. the dashboard job) can surface live per-node detail.
+        """
         logger.info("Starting research harvest cycle...")
         stats = {
             "sources_processed": 0,
@@ -53,6 +69,13 @@ class HarvestEngine:
             "errors": [],
         }
 
+        def _emit(stage, label, detail=""):
+            if on_progress:
+                try:
+                    on_progress(stage, label, detail)
+                except Exception:
+                    pass
+
         # 1. Harvest Configured Sources
         for source in self.source_manager.get_enabled_sources():
             stats["sources_processed"] += 1
@@ -61,10 +84,14 @@ class HarvestEngine:
                 logger.debug(f"No adapter registered for source type '{source.source_type}' ({source.id}). Skipping.")
                 continue
 
+            # Map source_type to node key for live UI
+            node_key = {"scrapling": "scrapling", "web": "scrapling", "firecrawl": "scrapling", "rss": "scrapling", "github": "github", "agent_reach": "agent_reach", "x": "agent_reach"}.get(source.source_type, source.source_type)
+            _emit(node_key, f"Harvesting {source.name}", source.target[:80])
             try:
                 logger.info(f"Harvesting source '{source.name}' via {source.source_type}...")
                 items = adapter.harvest(source.target)
                 self._process_harvested_items(items, source.source_tier, stats)
+                _emit(node_key, f"Got {len(items)} items from {source.name}", f"total new so far: {stats['new_inserted']}")
             except Exception as e:
                 err_msg = f"Harvest error for source '{source.id}': {e}"
                 logger.error(err_msg)
@@ -72,6 +99,7 @@ class HarvestEngine:
 
         # 2. Harvest Monitored People Watchlist
         for person in self.source_manager.get_enabled_people():
+            _emit("agent_reach", f"Checking @{person.name}", ", ".join(person.handles.values())[:60])
             self._harvest_person(person, stats)
 
         logger.info(
@@ -92,25 +120,38 @@ class HarvestEngine:
                 logger.warning(f"Error harvesting GitHub activity for person {person.name}: {e}")
                 stats["errors"].append({"person": person.id, "handle": "github", "error": str(e)})
 
-        # Blog / Web Handle
-        if "blog" in person.handles and "firecrawl" in self.adapters:
-            blog_url = person.handles["blog"]
-            try:
-                items = self.adapters["firecrawl"].harvest(blog_url)
-                self._process_harvested_items(items, person.source_tier, stats)
-            except Exception as e:
-                logger.warning(f"Error harvesting blog for person {person.name}: {e}")
-                stats["errors"].append({"person": person.id, "handle": "blog", "error": str(e)})
+        # Blog / Web / Substack / RSS Handle
+        for handle_key, adapter_name in (("blog", "scrapling"), ("substack", "rss"), ("rss", "rss")):
+            if handle_key in person.handles and adapter_name in self.adapters:
+                target = person.handles[handle_key]
+                try:
+                    items = self.adapters[adapter_name].harvest(target)
+                    self._process_harvested_items(items, person.source_tier, stats)
+                except Exception as e:
+                    logger.warning(f"Error harvesting {handle_key} for person {person.name}: {e}")
+                    stats["errors"].append({"person": person.id, "handle": handle_key, "error": str(e)})
 
-        # Social / X via Agent Reach
-        if "x" in person.handles and "agent_reach" in self.adapters:
+        # Social / X Handle via official X API v2 (falls back to community search)
+        if "x" in person.handles:
             x_handle = person.handles["x"]
-            try:
-                items = self.adapters["agent_reach"].harvest(f"from:{x_handle}")
-                self._process_harvested_items(items, person.source_tier, stats)
-            except Exception as e:
-                logger.warning(f"Error harvesting social for person {person.name}: {e}")
-                stats["errors"].append({"person": person.id, "handle": "x", "error": str(e)})
+            harvested = False
+            if "x" in self.adapters:
+                try:
+                    items = self.adapters["x"].harvest(f"from:{x_handle}", tier=person.source_tier)
+                    if items:
+                        self._process_harvested_items(items, person.source_tier, stats)
+                        harvested = True
+                except Exception as e:
+                    logger.warning(f"Error harvesting X for person {person.name}: {e}")
+                    stats["errors"].append({"person": person.id, "handle": "x", "error": str(e)})
+            # Community-discussion fallback when the X API yields nothing
+            if not harvested and "agent_reach" in self.adapters:
+                try:
+                    items = self.adapters["agent_reach"].harvest(f"from:{x_handle}")
+                    self._process_harvested_items(items, person.source_tier, stats)
+                except Exception as e:
+                    logger.warning(f"Error harvesting social fallback for person {person.name}: {e}")
+                    stats["errors"].append({"person": person.id, "handle": "x_fallback", "error": str(e)})
 
     def _process_harvested_items(
         self, items: list[RawHarvestItem], source_tier: int, stats: dict[str, Any]

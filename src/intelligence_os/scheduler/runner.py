@@ -13,9 +13,11 @@ from intelligence_os.intelligence.openrouter import OpenRouterClient
 from intelligence_os.publishing.dispatcher import PublishingDispatcher
 from intelligence_os.publishing.linkedin import LinkedInPublisher
 from intelligence_os.publishing.x import XPublisher
-from intelligence_os.research.adapters.firecrawl import FirecrawlAdapter
+from intelligence_os.research.adapters.scrapling import ScraplingAdapter
+from intelligence_os.research.adapters.rss import RSSAdapter
 from intelligence_os.research.adapters.github import GitHubAdapter
 from intelligence_os.research.adapters.agent_reach import AgentReachAdapter
+from intelligence_os.research.adapters.x import XAdapter
 from intelligence_os.research.harvest_engine import HarvestEngine
 from intelligence_os.review.gate import ReviewGate
 from intelligence_os.review.verifier import ReviewVerifier
@@ -35,14 +37,18 @@ class PipelineRunner:
         # Config & Sources
         self.source_manager = SourceManager()
 
-        # Research Adapters
-        self.firecrawl = FirecrawlAdapter(
-            base_url=self.settings.firecrawl_base_url,
-            api_key=self.settings.firecrawl_api_key,
-        )
+        # Research Adapters (zero-Docker: local Scrapling engine + RSS + Agent Reach)
+        self.scrapling = ScraplingAdapter()
+        self.rss = RSSAdapter()
         self.agent_reach = AgentReachAdapter(
             base_url=self.settings.agent_reach_base_url,
             api_key=self.settings.agent_reach_api_key,
+        )
+        self.x = XAdapter(
+            consumer_key=s_x_consumer if (s_x_consumer := self.settings.x_consumer_key or self.settings.x_api_key) else None,
+            consumer_secret=s_x_secret if (s_x_secret := self.settings.x_consumer_secret or self.settings.x_api_secret) else None,
+            access_token=self.settings.x_access_token,
+            access_token_secret=self.settings.x_access_token_secret,
         )
         self.github = GitHubAdapter(token=self.settings.github_token)
 
@@ -50,9 +56,11 @@ class PipelineRunner:
         self.harvest_engine = HarvestEngine(
             source_manager=self.source_manager,
             db=self.db,
-            firecrawl_adapter=self.firecrawl,
+            scrapling_adapter=self.scrapling,
+            rss_adapter=self.rss,
             agent_reach_adapter=self.agent_reach,
             github_adapter=self.github,
+            x_adapter=self.x,
         )
 
         # Deduplication

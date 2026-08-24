@@ -26,7 +26,7 @@ class SourceConfigEntry(BaseModel):
 
     id: str
     name: str
-    source_type: Literal["github", "firecrawl", "agent_reach", "rss", "web"]
+    source_type: Literal["github", "scrapling", "rss", "agent_reach", "firecrawl", "web"]
     source_tier: int = 1
     target: str
     polling_frequency_minutes: int = 180

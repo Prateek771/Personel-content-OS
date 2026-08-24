@@ -32,10 +32,10 @@ class Settings(BaseSettings):
 
     # AI Gateway (OpenRouter Models)
     openrouter_api_key: str | None = Field(default=None)
-    openrouter_default_model: str = "anthropic/claude-3.5-sonnet-20241022"
-    openrouter_fallback_model: str = "openai/gpt-4o-mini"
+    openrouter_default_model: str = "dots-studio/dots-3-note-preview:free"
+    openrouter_fallback_model: str = "dots-studio/dots-3-note-preview:free"
     openrouter_copywriting_model: str = "dots-studio/dots-3-note-preview:free"
-    openrouter_image_model: str = "bytedance-seed/seedream-5-0-lite"
+    openrouter_image_model: str = "x-ai/grok-imagine-image-2.0"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # Research Sources

@@ -14,8 +14,10 @@ def test_dashboard_index_route() -> None:
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "AI Content Intelligence OS" in response.text
-    assert "canvas-grid" in response.text
-    assert "Scrapling Engine (0 Docker)" in response.text
+    assert "topic-input" in response.text
+    assert "LinkedIn Carousel Studio" in response.text
+    # N8N-style node canvas
+    assert "node-scrapling" in response.text
 
 
 def test_dashboard_telemetry_endpoint() -> None:

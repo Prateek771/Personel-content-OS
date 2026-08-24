@@ -41,13 +41,13 @@ LINKEDIN_CAROUSEL_SYSTEM_PROMPT = """You are an elite AI systems architect and t
 Your audience: AI developers, tech leads, and founders who want clear, visual, high-signal explanations with bullet points.
 
 MANDATORY RULES:
-1. Focus 100% on a 5-Slide Technical Carousel breakdown.
-2. Slide 1 (Hook): Punchy title & why this architecture matters.
-3. Slide 2 (The Problem): Why traditional methods break down.
-4. Slide 3 (The Mechanism): The core architecture broken into 3 clean bullet points.
-5. Slide 4 (Implementation): Practical step-by-step developer implementation.
-6. Slide 5 (Summary & Takeaway): Production trade-offs and key takeaway.
-7. Write companion `post_copy` in 100% natural, human English with emojis and bullet points. Zero JSON, zero code blocks in post text.
+1. Focus 100% on a 4-Slide Technical Carousel breakdown about the supplied topic (a 5th call-to-action slide is appended automatically).
+2. Slide 1 (Hook): Punchy title & why this topic matters right now.
+3. Slide 2 (Evidence / Problem): The strongest evidence, data point, or problem the topic solves.
+4. Slide 3 (Mechanism / Implication): How it works or what it means for practitioners.
+5. Slide 4 (Takeaway): The concrete, actionable takeaway.
+6. Every slide title, subtitle, bullet point and takeaway MUST be derived from THIS research core and the typed topic — never reuse generic protocol/architecture examples. No invented facts, no hashtags in slide copy.
+7. Write companion `post_copy` in 100% natural, human English with emojis and bullet points. Zero JSON, zero code blocks in post text. The post must reference the actual subject by name.
 
 Output strictly in JSON matching the schema."""
 
@@ -76,53 +76,25 @@ Content Angle: {core.content_angle}
 Tags: {', '.join(core.tags)}
 
 INSTRUCTIONS:
-Create a 5-slide carousel breakdown with companion post copy.
-Return JSON matching:
+Create a 4-slide CONTENT carousel breakdown (the 5th CTA slide is added automatically) with companion post copy.
+Every slide title, subtitle, bullet point and takeaway MUST be derived from THIS research core and the typed topic above — never reuse generic protocol/architecture examples.
+The companion post_copy must reference the actual subject by name.
+
+Return ONLY JSON with exactly this shape (values below are placeholders to be replaced):
 {{
   "format": "carousel",
-  "post_copy": "🚀 Stop writing brittle tool parsers for every AI agent.\\n\\nHere is a 5-slide visual breakdown on how standardized protocols work:\\n\\n📌 1. Standardized JSON-RPC\\n📌 2. Dynamic Tool Discovery\\n📌 3. Local stdio Performance\\n\\nSwipe through the carousel below for the complete architecture breakdown 👇\\n\\n#AIAgents #OpenSource #SoftwareEngineering",
+  "post_copy": "<3-6 sentence natural English post about THIS topic, emojis allowed, ends with hashtags>",
   "carousel_data": {{
-    "topic_title": "{core.hook[:50]}",
-    "total_slides": 5,
+    "topic_title": "<short punchy title>",
+    "total_slides": 4,
     "slides": [
-      {{
-        "slide_number": 1,
-        "title": "Architecture Blueprint",
-        "subtitle": "{core.hook[:60]}",
-        "bullet_points": ["Why traditional agents break", "The standardized protocol shift"],
-        "takeaway": "Swipe to explore ->"
-      }},
-      {{
-        "slide_number": 2,
-        "title": "The Core Shift",
-        "subtitle": "Decoupling Tools from Models",
-        "bullet_points": ["No hardcoded API calls", "Universal JSON-RPC standard", "Pluggable capabilities"],
-        "takeaway": "Dynamic capability discovery"
-      }},
-      {{
-        "slide_number": 3,
-        "title": "How It Works",
-        "subtitle": "Step-by-Step Flow",
-        "bullet_points": ["Agent spawns stdio process", "Server registers tools & schemas", "Agent invokes typed functions"],
-        "takeaway": "Zero boilerplate glue code"
-      }},
-      {{
-        "slide_number": 4,
-        "title": "Key Trade-offs",
-        "subtitle": "Production Realities",
-        "bullet_points": ["Requires local runtime environment", "Process startup overhead", "OS dependency management"],
-        "takeaway": "Best for local dev loops"
-      }},
-      {{
-        "slide_number": 5,
-        "title": "Actionable Takeaway",
-        "subtitle": "Get Started Today",
-        "bullet_points": ["Adopt lightweight stdio servers", "Separate tool logic from prompts", "Reference: {core.evidence[0] if core.evidence else 'GitHub'}"],
-        "takeaway": "Build modular agent tools"
-      }}
+      {{"slide_number": 1, "title": "<hook>", "subtitle": "<why it matters>", "bullet_points": ["<point>", "<point>"], "takeaway": "<transition>"}},
+      {{"slide_number": 2, "title": "<evidence/problem>", "subtitle": "...", "bullet_points": ["..."], "takeaway": "..."}},
+      {{"slide_number": 3, "title": "<mechanism/implication>", "subtitle": "...", "bullet_points": ["..."], "takeaway": "..."}},
+      {{"slide_number": 4, "title": "<takeaway>", "subtitle": "...", "bullet_points": ["..."], "takeaway": "..."}}
     ]
   }},
-  "tags": ["#AIAgents", "#OpenSource", "#SoftwareEngineering"]
+  "tags": {json.dumps(core.tags)}
 }}"""
 
         messages = [
@@ -142,11 +114,10 @@ Return JSON matching:
         except Exception as e:
             logger.warning(f"Fallback parsing for LinkedIn carousel: {e}")
             fallback_slides = [
-                LinkedInCarouselSlide(slide_number=1, title="AI Architecture", subtitle=core.hook[:50], bullet_points=[core.core_insight[:60]]),
-                LinkedInCarouselSlide(slide_number=2, title="Core Insight", subtitle="Key Mechanism", bullet_points=[core.core_insight[:80]]),
-                LinkedInCarouselSlide(slide_number=3, title="Implementation", subtitle="Workflow", bullet_points=[core.practical_takeaway[:80]]),
-                LinkedInCarouselSlide(slide_number=4, title="Limitations", subtitle="Trade-offs", bullet_points=[core.limitations[:80]]),
-                LinkedInCarouselSlide(slide_number=5, title="Key Takeaway", subtitle="Summary", bullet_points=["Adopt modular protocols."]),
+                LinkedInCarouselSlide(slide_number=1, title="Why it matters", subtitle=core.hook[:60], bullet_points=[core.core_insight[:80]]),
+                LinkedInCarouselSlide(slide_number=2, title="The evidence", subtitle="What the research shows", bullet_points=[core.core_insight[:100]]),
+                LinkedInCarouselSlide(slide_number=3, title="How it works", subtitle="Mechanism", bullet_points=[core.practical_takeaway[:100]]),
+                LinkedInCarouselSlide(slide_number=4, title="Key takeaway", subtitle="What to do", bullet_points=[core.limitations[:100]]),
             ]
             return LinkedInContentResult(
                 format="carousel",

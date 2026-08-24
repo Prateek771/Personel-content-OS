@@ -97,10 +97,10 @@ sources:
     extraction_hints:
       - "Check for newly registered servers and protocol updates."
 
-  # Web Research & Changelogs via Firecrawl (Tier 1 & Tier 2)
+  # Web Research & Changelogs via local Scrapling engine (Tier 1 & Tier 2)
   - id: web-simonw-blog
     name: Simon Willison's Weblog
-    source_type: firecrawl
+    source_type: scrapling
     source_tier: 1
     target: "https://simonwillison.net/"
     polling_frequency_minutes: 360
@@ -111,7 +111,7 @@ sources:
 
   - id: web-hacker-news-ai
     name: Hacker News High-Signal AI Discussions
-    source_type: firecrawl
+    source_type: scrapling
     source_tier: 2
     target: "https://news.ycombinator.com/from?site=github.com"
     polling_frequency_minutes: 180

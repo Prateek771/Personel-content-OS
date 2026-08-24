@@ -1,6 +1,7 @@
 """X (Twitter) content generator for standalone posts and technical threads in natural English."""
 
 import json
+import re
 from typing import Literal
 from pydantic import BaseModel, Field
 
@@ -68,17 +69,18 @@ Preferred Format: {preferred_format}
 
 INSTRUCTIONS:
 Write a high-signal 5-post thread in natural English with bullet points.
+Every post MUST be derived from THIS research core above and name the actual project/tool.
 Return JSON matching:
 {{
   "format": "{preferred_format}",
   "posts": [
-    {{"post_number": 1, "text": "1/5 🚀 Hook stating the breakthrough..."}},
-    {{"post_number": 2, "text": "2/5 ⚡ Architecture breakdown:\\n• Point 1\\n• Point 2"}},
-    {{"post_number": 3, "text": "3/5 🛠️ How to implement it..."}},
-    {{"post_number": 4, "text": "4/5 ⚠️ Key limitations & edge cases..."}},
-    {{"post_number": 5, "text": "5/5 📌 Summary & link: {core.evidence[0] if core.evidence else ''}"}}
+    {{"post_number": 1, "text": "1/5 <hook about this exact topic>"}},
+    {{"post_number": 2, "text": "2/5 <architecture/mechanism bullets>"}},
+    {{"post_number": 3, "text": "3/5 <implementation steps>"}},
+    {{"post_number": 4, "text": "4/5 <limitations & edge cases>"}},
+    {{"post_number": 5, "text": "5/5 <takeaway + link: {core.evidence[0] if core.evidence else ''}>"}}
   ],
-  "full_text_rendered": "Clean text representation of all posts combined with double linebreaks"
+  "full_text_rendered": "<all posts joined with double newlines>"
 }}"""
 
         messages = [
@@ -101,6 +103,17 @@ Return JSON matching:
             return XContentResult(**raw_json)
         except Exception as e:
             logger.warning(f"Fallback parsing for X generator: {e}")
+            # Salvage post texts even when the surrounding JSON is malformed
+            salvaged = re.findall(r'"text"\s*:\s*"((?:[^"\\]|\\.)*)"', cleaned)
+            if salvaged:
+                texts = [t.encode().decode("unicode_escape", errors="ignore").strip() for t in salvaged]
+                posts = [XPostItem(post_number=i + 1, text=t) for i, t in enumerate(texts) if t]
+                if posts:
+                    return XContentResult(
+                        format=preferred_format,
+                        posts=posts,
+                        full_text_rendered="\n\n".join(p.text for p in posts),
+                    )
             clean_lines = [line.strip() for line in cleaned.split("\n") if line.strip() and not line.startswith("{") and not line.startswith("}")]
             combined = "\n\n".join(clean_lines) if clean_lines else cleaned
             return XContentResult(

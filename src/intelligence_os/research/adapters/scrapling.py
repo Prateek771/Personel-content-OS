@@ -1,8 +1,7 @@
 """Scrapling adapter for high-performance, stealthy, and zero-Docker web scraping."""
 
 from typing import Any
-import markdownify
-from scrapling import Fetcher, Selector
+from scrapling import Fetcher
 
 from intelligence_os.core.logger import logger
 from intelligence_os.research.adapters.base import BaseResearchAdapter, RawHarvestItem
@@ -27,16 +26,23 @@ class ScraplingAdapter(BaseResearchAdapter):
             if page.status != 200:
                 logger.warning(f"Scrapling received HTTP status {page.status} for {target}")
 
-            # Extract title using adaptive css selectors
+            # Extract title
             title = page.css("title::text").get() or page.css("h1::text").get() or target
             title = title.strip()
 
-            # Clean body content to markdown
-            html_content = page.body if hasattr(page, "body") and isinstance(page.body, str) else str(page.root)
-            clean_md = markdownify.markdownify(html_content, heading_style="ATX").strip()
-
-            # Extract top text snippet for summary
-            summary = clean_md[:350].replace("\n", " ").replace("#", "").strip()
+            # Prefer scrapling's built-in markdown conversion; fall back to raw HTML text
+            clean_md = ""
+            try:
+                md_result = page.markdown()
+                clean_md = md_result if isinstance(md_result, str) else str(md_result)
+            except Exception as e:
+                logger.debug(f"scrapling .markdown() unavailable ({e}); falling back to html_content")
+            if not clean_md.strip():
+                html = page.html_content or ""
+                if html:
+                    from markdownify import markdownify
+                    clean_md = markdownify(html, heading_style="ATX")
+            clean_md = clean_md.strip()
 
             return [
                 RawHarvestItem(
@@ -45,12 +51,11 @@ class ScraplingAdapter(BaseResearchAdapter):
                     source_tier=kwargs.get("tier", 1),
                     title=title,
                     raw_content=clean_md[:10000],
-                    summary=summary,
-                    author=kwargs.get("author", "web-author"),
+                    markdown_content=clean_md[:10000],
+                    author=page.css("meta[name='author']::attr(content)").get() or "",
                     metadata={
                         "http_status": page.status,
                         "engine": "scrapling",
-                        "scraped_at": str(kwargs.get("scraped_at", "")),
                     },
                 )
             ]

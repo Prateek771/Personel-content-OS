@@ -1,4 +1,9 @@
-"""Agent Reach adapter for social and community technical intelligence."""
+"""Agent Reach adapter for social and community technical intelligence.
+
+Layered backends, best-first:
+1. Self-hosted Agent Reach HTTP service (if running at base_url)
+2. Hacker News Algolia API (keyless community discussion search) — always works
+"""
 
 from typing import Any
 import httpx
@@ -7,7 +12,7 @@ from intelligence_os.research.adapters.base import BaseResearchAdapter, RawHarve
 
 
 class AgentReachAdapter(BaseResearchAdapter):
-    """Harvests builder posts, demos, and workflow discussions via Agent Reach service."""
+    """Harvests builder posts, demos, and workflow discussions via Agent Reach."""
 
     def __init__(
         self,
@@ -32,10 +37,16 @@ class AgentReachAdapter(BaseResearchAdapter):
 
     def harvest(self, target: str, **kwargs: Any) -> list[RawHarvestItem]:
         """Harvest discussions and demos matching query or handle."""
-        if not self.is_available():
-            logger.debug(f"Agent Reach service at {self.base_url} is currently unavailable. Skipping.")
-            return []
+        # Backend 1: real Agent Reach HTTP service when present
+        if self.is_available():
+            items = self._harvest_http_service(target, **kwargs)
+            if items:
+                return items
 
+        # Backend 2: keyless HN Algolia community search
+        return self._harvest_hn_algolia(target, **kwargs)
+
+    def _harvest_http_service(self, target: str, **kwargs: Any) -> list[RawHarvestItem]:
         endpoint = f"{self.base_url}/api/v1/search"
         headers = {"Content-Type": "application/json"}
         if self.api_key:
@@ -74,4 +85,65 @@ class AgentReachAdapter(BaseResearchAdapter):
             return items
         except Exception as e:
             logger.warning(f"Agent Reach query failed for '{target}': {e}")
+            return []
+
+    def _harvest_hn_algolia(self, target: str, **kwargs: Any) -> list[RawHarvestItem]:
+        """Fallback community intelligence via Hacker News Algolia search API."""
+        query = target.strip()
+        # "from:handle" style X queries cannot run on HN; strip to keywords instead
+        if query.lower().startswith(("from:", "query:", "@")):
+            query = query.split(":", 1)[-1].strip().strip("'\"")
+        if not query:
+            logger.debug(
+                "Agent Reach social handle harvesting requires a backend. "
+                "Install one with: pipx install twitter-cli (then agent-reach doctor)."
+            )
+            return []
+
+        limit = min(kwargs.get("limit", 10), 20)
+        try:
+            with httpx.Client(timeout=self.timeout_seconds) as client:
+                resp = client.get(
+                    "https://hn.algolia.com/api/v1/search",
+                    params={"query": query, "tags": "story", "hitsPerPage": limit},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+            items: list[RawHarvestItem] = []
+            for hit in data.get("hits", []):
+                title = hit.get("title") or hit.get("story_title") or ""
+                url = hit.get("url") or (
+                    f"https://news.ycombinator.com/item?id={hit.get('objectID')}" if hit.get("objectID") else ""
+                )
+                if not url or not title:
+                    continue
+                discussion = f"https://news.ycombinator.com/item?id={hit.get('objectID')}"
+                content = (
+                    f"{title}\n\nPoints: {hit.get('points', 0)} | Comments: {hit.get('num_comments', 0)}\n"
+                    f"Discussion: {discussion}\nArticle: {url}"
+                )
+                items.append(
+                    RawHarvestItem(
+                        source_url=url,
+                        title=title,
+                        raw_content=content,
+                        markdown_content=content,
+                        author=hit.get("author", ""),
+                        source_type="agent_reach",
+                        source_tier=2,
+                        metadata={
+                            "platform": "hacker_news",
+                            "points": hit.get("points", 0),
+                            "num_comments": hit.get("num_comments", 0),
+                            "discussion_url": discussion,
+                            "engine": "hn_algolia",
+                            "created_at": hit.get("created_at"),
+                        },
+                    )
+                )
+            logger.info(f"HN Algolia fallback returned {len(items)} items for '{target}'")
+            return items
+        except Exception as e:
+            logger.warning(f"HN Algolia fallback failed for '{target}': {e}")
             return []

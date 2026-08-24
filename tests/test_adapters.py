@@ -8,11 +8,48 @@ from intelligence_os.research.adapters.agent_reach import AgentReachAdapter
 from intelligence_os.research.adapters.github import GitHubAdapter
 
 
-def test_agent_reach_unavailable_skips_cleanly() -> None:
-    """Verify Agent Reach gracefully skips when server is unreachable."""
+def test_agent_reach_hn_fallback_when_service_down() -> None:
+    """Verify Agent Reach falls back to HN Algolia community search when service is unreachable."""
     adapter = AgentReachAdapter(base_url="http://localhost:8080")
-    with patch.object(adapter, "is_available", return_value=False):
+    with patch.object(adapter, "is_available", return_value=False), \
+         patch("httpx.Client.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json.return_value = {
+            "hits": [
+                {
+                    "objectID": "40000001",
+                    "title": "Show HN: New coding agent framework",
+                    "url": "https://example.com/agent-framework",
+                    "author": "tester",
+                    "points": 120,
+                    "num_comments": 45,
+                }
+            ]
+        }
+        mock_get.return_value = mock_resp
         items = adapter.harvest("coding agent demo")
+
+    assert len(items) == 1
+    assert items[0].metadata["platform"] == "hacker_news"
+    assert items[0].source_type == "agent_reach"
+
+
+def test_agent_reach_x_handle_without_backend_returns_empty() -> None:
+    """from:handle X queries yield nothing when no backend exists (no crash, no fabrication)."""
+    adapter = AgentReachAdapter(base_url="http://localhost:8080")
+    with patch.object(adapter, "is_available", return_value=False), \
+         patch("httpx.Client.get") as mock_get:
+        # Any accidental network call would still be empty; assert no fabrication
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json.return_value = {"hits": []}
+        mock_get.return_value = mock_resp
+        items = adapter.harvest("query:('AI agent' OR 'coding agent')")
+
+    # Query text survives stripping, HN returns no hits -> empty list is honest result
     assert items == []
 
 

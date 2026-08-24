@@ -181,6 +181,18 @@ class ContentDraftRepository:
             )
             return [self._row_to_model(row) for row in cursor.fetchall()]
 
+    def delete_excluding(self, keep_ids: list[str]) -> int:
+        """Delete all drafts whose IDs are not in keep_ids. Returns number deleted."""
+        if not keep_ids:
+            return 0
+        with self.db.session() as conn:
+            placeholders = ",".join("?" for _ in keep_ids)
+            cursor = conn.execute(
+                f"DELETE FROM content_drafts WHERE id NOT IN ({placeholders});",
+                tuple(keep_ids),
+            )
+            return cursor.rowcount
+
     def update_review(
         self,
         draft_id: str,
